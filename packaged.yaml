@@ -96,15 +96,6 @@ Parameters:
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
     Description: EC2 KeyPair for SSH access
-  PrivateSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: Private subnets for the EC2 instance
-  EC2SecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
-    Description: Security Group for the n8n EC2 instance
-  InstanceProfileName:
-    Type: String
-    Description: IAM Instance Profile name created by the IAMStack
 Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
@@ -120,7 +111,7 @@ Resources:
   IAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/bf2bfd229ecaf1f798b108627021ce5e.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/e97773fe6945188d3170a7c2f0a28fc6.template
       Parameters:
         ClientName:
           Ref: ClientName

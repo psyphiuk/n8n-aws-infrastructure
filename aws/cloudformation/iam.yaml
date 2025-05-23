@@ -25,16 +25,14 @@ Resources:
     Type: AWS::IAM::InstanceProfile
     Properties:
       InstanceProfileName: !Sub 'n8n-${ClientName}-InstanceProfile'
-      Roles:
-        - !Ref EC2InstanceRole
+      Roles: !Ref EC2InstanceRole
       Path: /
 
   SSMSecretsPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: !Sub 'n8n-${ClientName}-SSMAccess'
-      Roles:
-        - !Ref EC2InstanceRole
+      Roles: !Ref EC2InstanceRole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:

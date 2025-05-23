@@ -104,19 +104,6 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: EC2 KeyPair for SSH access
 
-  PrivateSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: Private subnets for the EC2 instance
-
-  EC2SecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
-    Description: Security Group for the n8n EC2 instance
-
-  InstanceProfileName:
-    Type: String
-    Description: IAM Instance Profile name created by the IAMStack
-
-
 Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
