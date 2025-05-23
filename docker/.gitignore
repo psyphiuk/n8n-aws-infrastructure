@@ -1,0 +1,5 @@
+.env.local
+n8n-data/
+postgres-data/
+redis-data/
+n8n-key.pem

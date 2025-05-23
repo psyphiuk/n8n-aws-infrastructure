@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # ────────────────#
+  # Postgres DB
+  # ────────────────#
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_NON_ROOT_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+
+  # ────────────────#
+  # Redis for queue
+  # ────────────────#
+  redis:
+    image: redis:6-alpine
+    restart: unless-stopped
+    volumes:
+      - ./redis-data:/data
+
+  # ────────────────#
+  # n8n Web UI
+  # ────────────────#
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Database
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+
+      # Basic Auth
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+
+      # Timezone
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+
+      # Queue mode
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
+
+      # Encryption & file-perm enforcement
+      - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+      - ./n8n-data:/home/node/.n8n
+    depends_on:
+      - postgres
+      - redis
+
+  # ──────────────────#
+  # n8n Queue Worker
+  # ──────────────────#
+  n8n-worker:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    command: worker
+    environment:
+      # Same as above
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
+
+      - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+      - ./n8n-data:/home/node/.n8n
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres-data:
+  redis-data:
+  n8n-data:
