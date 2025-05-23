@@ -127,7 +127,10 @@ Resources:
     Properties:
       TemplateURL: security.yaml
       Parameters:
-        VpcId:    !GetAtt NetworkStack.Outputs.VpcId
+        VpcId:    
+         Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
         SSHCidr:  !Ref SSHCidr
 
   DatabaseStack:
@@ -174,7 +177,10 @@ Resources:
     Properties:
       TemplateURL: load-balancer.yaml
       Parameters:
-        VpcId:               !GetAtt NetworkStack.Outputs.VpcId
+        VpcId:    
+         Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
         PublicSubnetIds:     !Split [ ',', !GetAtt NetworkStack.Outputs.PublicSubnetIds ]
         ALBSecurityGroupId:  !GetAtt SecurityStack.Outputs.ALBSecurityGroupId
         CertificateArn:      !Ref CertificateArn
@@ -184,7 +190,10 @@ Resources:
     Properties:
       TemplateURL: outputs.yaml
       Parameters:
-        VpcId:               !GetAtt NetworkStack.Outputs.VpcId
+        VpcId:    
+         Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
         PublicSubnetIds:     !GetAtt NetworkStack.Outputs.PublicSubnetIds
         PrivateSubnetIds:    !GetAtt NetworkStack.Outputs.PrivateSubnetIds
         ALBSecurityGroupId:  !GetAtt SecurityStack.Outputs.ALBSecurityGroupId

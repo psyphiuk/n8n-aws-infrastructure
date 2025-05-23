@@ -100,7 +100,7 @@ Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/7df61692bd214b4bde87c3a41a6a8102.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/8766ae6561e2b4d504481be4f6528c04.template
       Parameters:
         VpcCidr:
           Ref: VpcCidr

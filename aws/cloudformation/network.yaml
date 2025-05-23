@@ -4,15 +4,12 @@ Description: 'VPC, subnets, IGW, NAT, and route tables for n8n'
 Parameters:
   VpcCidr:
     Type: String
-    Default: '10.0.0.0/16'
 
   PublicSubnetCIDRs:
     Type: List<String>
-    Default: '10.0.1.0/24,10.0.2.0/24'
 
   PrivateSubnetCIDRs:
     Type: List<String>
-    Default: '10.0.101.0/24,10.0.102.0/24'
 
 Resources:
   VPC:
