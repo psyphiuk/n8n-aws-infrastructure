@@ -73,9 +73,6 @@ Parameters:
     Type: String
     Default: master
     Description: Git branch to clone
-  DomainName:
-    Type: String
-    Description: The domain name for this deployment (e.g. "tybi.ai")
   InstanceType:
     Type: String
     Default: t3.medium
@@ -169,9 +166,9 @@ Resources:
         AmiId:                   !Ref AmiId
         InstanceType:            !Ref InstanceType
         KeyName:                 !Ref KeyName
-        PrivateSubnetIds:        !Ref PrivateSubnetIds
-        EC2SecurityGroupId:      !Ref EC2SecurityGroupId
-        InstanceProfileName:     !Ref InstanceProfileName
+        PrivateSubnetIds:        !Split [ ',', !GetAtt NetworkStack.Outputs.PrivateSubnetIds ]
+        EC2SecurityGroupId:      !GetAtt SecurityStack.Outputs.EC2SecurityGroupId
+        InstanceProfileName:     !GetAtt IAMStack.Outputs.InstanceProfileName
         ClientName:              !Ref ClientName
         RepoURL:                 !Ref RepoURL
         RepoBranch:              !Ref RepoBranch
