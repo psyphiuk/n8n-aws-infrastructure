@@ -1,0 +1,52 @@
+# iam.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IAM Role, InstanceProfile, and SSM-access policy for n8n EC2'
+
+Parameters:
+  ClientName:
+    Type: String
+    Description: The unique identifier for this n8n deployment (e.g. “tybi.ai”)
+
+Resources:
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'n8n-${ClientName}-EC2Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub 'n8n-${ClientName}-InstanceProfile'
+      Roles:
+        - !Ref EC2InstanceRole
+      Path: /
+
+  SSMSecretsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'n8n-${ClientName}-SSMAccess'
+      Roles:
+        - !Ref EC2InstanceRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetParametersByPath
+            Resource:
+              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/n8n/${ClientName}/*'
+
+Outputs:
+  InstanceProfileName:
+    Description: Name of the EC2 InstanceProfile for bootstrapping n8n
+    Value: !Ref EC2InstanceProfile

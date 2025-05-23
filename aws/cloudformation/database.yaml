@@ -1,0 +1,75 @@
+# database.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS Postgres for n8n
+
+Parameters:
+  DBName:
+    Type: String
+    Default: n8n
+    Description: Initial database name
+  DBUsername:
+    Type: String
+    Default: n8n
+    Description: Master DB username
+  SSMPostgresPasswordPath:
+    Type: String
+    Description: SSM path to the Postgres password (SecureString)
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.medium
+    Description: RDS instance class
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    Description: Storage in GB for the database
+  MultiAZ:
+    Type: String
+    AllowedValues: [ 'true', 'false' ]
+    Default: 'false'
+    Description: Enable Multi-AZ for high availability
+  DBSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnet IDs for the RDS Subnet Group
+  RDSSecurityGroupId:
+    Type: String
+    Description: Security Group ID for the RDS instance
+
+Resources:
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub "Subnets for ${AWS::StackName}"
+      SubnetIds: !Ref DBSubnetIds
+      DBSubnetGroupName: !Sub "${AWS::StackName}-db-subnet"
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref DBName
+      Engine: postgres
+      EngineVersion: '17.5'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      StorageType: gp3
+      MultiAZ: !Ref MultiAZ
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroupId
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword:
+        Fn::Sub: '{{resolve:ssm-secure:${SSMPostgresPasswordPath}:1}}'
+      BackupRetentionPeriod: 7
+      DeletionProtection: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-rds"
+
+Outputs:
+  DBEndpointAddress:
+    Description: Endpoint to connect to the RDS instance
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  DBPort:
+    Description: Port to connect to the RDS instance
+    Value: !GetAtt RDSInstance.Endpoint.Port

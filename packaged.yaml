@@ -1,0 +1,275 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: n8n stack for one client
+Parameters:
+  ClientName:
+    Type: String
+    Description: The identifier for this n8n deployment (e.g. "tybi.ai")
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for the VPC
+  PublicSubnetCIDRs:
+    Type: List<String>
+    Default: 10.0.1.0/24,10.0.2.0/24
+    Description: Two public subnet CIDRs for the ALB and NAT gateway
+  PrivateSubnetCIDRs:
+    Type: List<String>
+    Default: 10.0.101.0/24,10.0.102.0/24
+    Description: Two private subnet CIDRs for your EC2 instances
+  CertificateArn:
+    Type: String
+    Description: ACM certificate ARN for your domain
+  PostgresDb:
+    Type: String
+    Default: n8n
+    Description: Postgres database name for n8n
+  PostgresUser:
+    Type: String
+    Default: n8n
+    Description: Postgres database user for n8n
+  SsmPostgresPasswordPath:
+    Type: String
+    Description: SSM path for Postgres password
+  SsmEncryptionKeyPath:
+    Type: String
+    Description: SSM path for encryption key
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.medium
+    Description: RDS instance class
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    Description: Storage in GB for the database
+  MultiAZ:
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+    Default: 'false'
+    Description: Enable Multi-AZ for high availability
+  SSHCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR block for SSH access
+  RepoPath:
+    Type: String
+    Default: /home/ec2-user/app
+    Description: Relative path (in the repo) to your app directory
+  CliPluginsDir:
+    Type: String
+    Default: /usr/libexec/docker/cli-plugins
+    Description: Path to the directory containing the Compose CLI plugin
+  RepoURL:
+    Type: String
+    Default: https://github.com/psyphiuk/n8n-aws-infrastructure
+    Description: Git repository URL for the infra code
+  RepoBranch:
+    Type: String
+    Default: master
+    Description: Git branch to clone
+  DomainName:
+    Type: String
+    Description: The domain name for this deployment (e.g. "tybi.ai")
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type for n8n
+  BasicAuthActive:
+    Type: String
+    Default: 'true'
+    Description: Whether to use basic auth for n8n
+  BasicAuthUser:
+    Type: String
+    Description: Basic auth username for n8n
+  BasicAuthPassword:
+    Type: String
+    Description: Basic auth password for n8n
+  Timezone:
+    Type: String
+    Default: Europe/London
+    Description: Timezone for n8n
+  DockerDir:
+    Type: String
+    Default: docker
+    Description: Directory containing the docker compose file
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID for the n8n EC2 instance (e.g. Amazon Linux 2)
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 KeyPair for SSH access
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnets for the EC2 instance
+  EC2SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group for the n8n EC2 instance
+  InstanceProfileName:
+    Type: String
+    Description: IAM Instance Profile name created by the IAMStack
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/7df61692bd214b4bde87c3a41a6a8102.template
+      Parameters:
+        VpcCidr:
+          Ref: VpcCidr
+        PublicSubnetCIDRs:
+          Ref: PublicSubnetCIDRs
+        PrivateSubnetCIDRs:
+          Ref: PrivateSubnetCIDRs
+  IAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/bf2bfd229ecaf1f798b108627021ce5e.template
+      Parameters:
+        ClientName:
+          Ref: ClientName
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/405d3e0db8b5120cfe8c5f4b676f86fe.template
+      Parameters:
+        VpcId:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
+        SSHCidr:
+          Ref: SSHCidr
+  DatabaseStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/e8aea3ef06eceb6ecf97c41bcfab66dc.template
+      Parameters:
+        DBName:
+          Ref: PostgresDb
+        DBUsername:
+          Ref: PostgresUser
+        SSMPostgresPasswordPath:
+          Ref: SsmPostgresPasswordPath
+        DBInstanceClass:
+          Ref: DBInstanceClass
+        AllocatedStorage:
+          Ref: AllocatedStorage
+        MultiAZ:
+          Ref: MultiAZ
+        DBSubnetIds:
+          Fn::Split:
+          - ','
+          - Fn::GetAtt:
+            - NetworkStack
+            - Outputs.PrivateSubnetIds
+        RDSSecurityGroupId:
+          Fn::GetAtt:
+          - SecurityStack
+          - Outputs.RDSSecurityGroupId
+  ComputeStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/394b4ab5d77b00207fe25abb838cd284.template
+      Parameters:
+        AmiId:
+          Ref: AmiId
+        InstanceType:
+          Ref: InstanceType
+        KeyName:
+          Ref: KeyName
+        PrivateSubnetIds:
+          Ref: PrivateSubnetIds
+        EC2SecurityGroupId:
+          Ref: EC2SecurityGroupId
+        InstanceProfileName:
+          Ref: InstanceProfileName
+        ClientName:
+          Ref: ClientName
+        RepoURL:
+          Ref: RepoURL
+        RepoBranch:
+          Ref: RepoBranch
+        PostgresDb:
+          Ref: PostgresDb
+        PostgresUser:
+          Ref: PostgresUser
+        SsmPostgresPasswordPath:
+          Ref: SsmPostgresPasswordPath
+        SsmEncryptionKeyPath:
+          Ref: SsmEncryptionKeyPath
+        BasicAuthActive:
+          Ref: BasicAuthActive
+        BasicAuthUser:
+          Ref: BasicAuthUser
+        BasicAuthPassword:
+          Ref: BasicAuthPassword
+        Timezone:
+          Ref: Timezone
+        DockerDir:
+          Ref: DockerDir
+  LoadBalancerStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/62b0077619eebbff89dcdcf0c644bc48.template
+      Parameters:
+        VpcId:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
+        PublicSubnetIds:
+          Fn::Split:
+          - ','
+          - Fn::GetAtt:
+            - NetworkStack
+            - Outputs.PublicSubnetIds
+        ALBSecurityGroupId:
+          Fn::GetAtt:
+          - SecurityStack
+          - Outputs.ALBSecurityGroupId
+        CertificateArn:
+          Ref: CertificateArn
+  OutputsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/fa7d11411d2e370b56908e534f9e0ed3.template
+      Parameters:
+        VpcId:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.VpcId
+        PublicSubnetIds:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PublicSubnetIds
+        PrivateSubnetIds:
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PrivateSubnetIds
+        ALBSecurityGroupId:
+          Fn::GetAtt:
+          - SecurityStack
+          - Outputs.ALBSecurityGroupId
+        EC2SecurityGroupId:
+          Fn::GetAtt:
+          - SecurityStack
+          - Outputs.EC2SecurityGroupId
+        RDSSecurityGroupId:
+          Fn::GetAtt:
+          - SecurityStack
+          - Outputs.RDSSecurityGroupId
+        DBEndpointAddress:
+          Fn::GetAtt:
+          - DatabaseStack
+          - Outputs.DBEndpointAddress
+        DBPort:
+          Fn::GetAtt:
+          - DatabaseStack
+          - Outputs.DBPort
+        LoadBalancerDNSName:
+          Fn::GetAtt:
+          - LoadBalancerStack
+          - Outputs.LoadBalancerDNSName
+        InstanceProfileName:
+          Fn::GetAtt:
+          - IAMStack
+          - Outputs.InstanceProfileName
+Outputs: {}

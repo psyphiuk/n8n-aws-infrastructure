@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 instance and bootstrap for n8n
+
+Parameters:
+  ClientName:
+    Type: String
+    Description: Unique identifier for this n8n deployment
+  RepoURL:
+    Type: String
+    Description: Git repo URL containing docker-compose & bootstrap.sh
+  RepoBranch:
+    Type: String
+    Default: main
+    Description: Git branch to clone
+  PostgresDb:
+    Type: String
+    Default: n8n
+    Description: Database name
+  PostgresUser:
+    Type: String
+    Default: n8n
+    Description: Database user
+  SsmPostgresPasswordPath:
+    Type: String
+    Description: SSM path to your existing SecureString Postgres password
+  SsmEncryptionKeyPath:
+    Type: String
+    Description: SSM path to your existing SecureString n8n encryption key
+  BasicAuthActive:
+    Type: String
+    Description: true or false to enable basic auth
+  BasicAuthUser:
+    Type: String
+    Description: Basic auth username for n8n
+  BasicAuthPassword:
+    Type: String
+    Description: Basic auth password for n8n
+  Timezone:
+    Type: String
+    Default: Europe/London
+    Description: Timezone for n8n
+  DockerDir:
+    Type: String
+    Default: docker
+    Description: Relative path (in the repo) to your docker directory
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID for the EC2 instance (e.g. Amazon Linux 2)
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair for SSH
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnet IDs for the EC2 instance
+  EC2SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group ID for the EC2 instance
+  InstanceProfileName:
+    Type: String
+    Description: IAM Instance Profile name for EC2 role
+  RepoPath:
+    Type: String
+    Default: '/home/ec2-user/app'
+    Description: Relative path (in the repo) to your app directory
+  CliPluginsDir:
+    Type: String
+    Default: '/usr/libexec/docker/cli-plugins'
+    Description: Path to the directory containing the Compose CLI plugin
+  
+
+Resources:
+  N8nInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Select [ 0, !Ref PrivateSubnetIds ]
+      SecurityGroupIds: !Ref EC2SecurityGroupId
+      IamInstanceProfile: !Ref InstanceProfileName
+      
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/usr/bin/env bash
+            set -euxo pipefail
+
+            # 1. Install Docker & plugin
+            amazon-linux-extras install -y docker
+            systemctl enable docker
+            systemctl start docker
+            usermod -a -G docker ec2-user
+
+            # Install Compose CLI plugin
+            mkdir -p "${CliPluginsDir}"
+            curl -SL "https://github.com/docker/compose/releases/download/v2.16.0/docker-compose-linux-x86_64" \
+              -o "${CliPluginsDir}/docker-compose"
+            chmod +x "${CliPluginsDir}/docker-compose"
+
+            # 2. Install AWS CLI v2
+            yum install -y unzip
+            curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+            unzip -q /tmp/awscliv2.zip -d /tmp
+            /tmp/aws/install
+
+            # 3. Export parameters for bootstrap.sh
+            export CLIENT_NAME=${ClientName}
+            export POSTGRES_DB=${PostgresDb}
+            export POSTGRES_NON_ROOT_USER=${PostgresUser}
+            export SSM_POSTGRES_PASSWORD_PATH=${SsmPostgresPasswordPath}
+            export SSM_ENCRYPTION_KEY_PATH=${SsmEncryptionKeyPath}
+            export N8N_BASIC_AUTH_ACTIVE=${BasicAuthActive}
+            export N8N_BASIC_AUTH_USER=${BasicAuthUser}
+            export N8N_BASIC_AUTH_PASSWORD=${BasicAuthPassword}
+            export GENERIC_TIMEZONE=${Timezone}
+            export DOCKER_COMPOSE_REPO=${RepoURL}
+            export DOCKER_COMPOSE_BRANCH=${RepoBranch}
+            export DOCKER_COMPOSE_DIR=${DockerDir}
+
+            # 4. Clone or update infra repo
+            if [ ! -d "${RepoPath}/.git" ]; then
+              sudo -u ec2-user git clone --branch ${RepoBranch} ${RepoURL} "${RepoPath}"
+            else
+              cd "${RepoPath}"
+              sudo -u ec2-user git pull
+            fi
+            chown -R ec2-user:ec2-user "${RepoPath}"
+
+            # 5. Run the bootstrap script
+            sudo -u ec2-user bash "${RepoPath}/aws/bootstrap.sh"
+

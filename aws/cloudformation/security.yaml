@@ -1,0 +1,72 @@
+# security.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Security Groups for n8n ALB, EC2, and RDS
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC in which to create security groups
+  SSHCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR range for SSH to EC2 (for debugging)
+
+Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "ALB security group for n8n"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-alb-sg"
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "EC2 security group for n8n backend"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5678
+          ToPort: 5678
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHCidr
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ec2-sg"
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "RDS security group for n8n Postgres"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-rds-sg"
+
+Outputs:
+  ALBSecurityGroupId:
+    Description: SG for the Application Load Balancer
+    Value: !Ref ALBSecurityGroup
+
+  EC2SecurityGroupId:
+    Description: SG for n8n EC2 instances
+    Value: !Ref EC2SecurityGroup
+
+  RDSSecurityGroupId:
+    Description: SG for the RDS instance
+    Value: !Ref RDSSecurityGroup
