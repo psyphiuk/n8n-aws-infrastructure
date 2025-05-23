@@ -145,7 +145,10 @@ Resources:
         AllocatedStorage:          !Ref AllocatedStorage
         MultiAZ:                   !Ref MultiAZ
         DBSubnetIds:               !Split [ ',', !GetAtt NetworkStack.Outputs.PrivateSubnetIds ]
-        RDSSecurityGroupId:        !GetAtt SecurityStack.Outputs.RDSSecurityGroupId
+        RDSSecurityGroupId:        
+          Fn::GetAtt:
+            - SecurityStack
+            - Outputs.RDSSecurityGroupId
 
 
   ComputeStack:
@@ -157,8 +160,14 @@ Resources:
         InstanceType:            !Ref InstanceType
         KeyName:                 !Ref KeyName
         PrivateSubnetIds:        !Split [ ',', !GetAtt NetworkStack.Outputs.PrivateSubnetIds ]
-        EC2SecurityGroupId:      !GetAtt SecurityStack.Outputs.EC2SecurityGroupId
-        InstanceProfileName:     !GetAtt IAMStack.Outputs.InstanceProfileName
+        EC2SecurityGroupId:      
+          Fn::GetAtt:
+            - SecurityStack
+            - Outputs.EC2SecurityGroupId
+        InstanceProfileName:      
+          Fn::GetAtt:
+            - IAMStack
+            - Outputs.InstanceProfileName
         ClientName:              !Ref ClientName
         RepoURL:                 !Ref RepoURL
         RepoBranch:              !Ref RepoBranch
@@ -182,7 +191,10 @@ Resources:
           - NetworkStack
           - Outputs.VpcId
         PublicSubnetIds:     !Split [ ',', !GetAtt NetworkStack.Outputs.PublicSubnetIds ]
-        ALBSecurityGroupId:  !GetAtt SecurityStack.Outputs.ALBSecurityGroupId
+        ALBSecurityGroupId:  
+          Fn::GetAtt:
+            - SecurityStack
+            - Outputs.ALBSecurityGroupId
         CertificateArn:      !Ref CertificateArn
 
   OutputsStack:
@@ -194,15 +206,42 @@ Resources:
          Fn::GetAtt:
           - NetworkStack
           - Outputs.VpcId
-        PublicSubnetIds:     !GetAtt NetworkStack.Outputs.PublicSubnetIds
-        PrivateSubnetIds:    !GetAtt NetworkStack.Outputs.PrivateSubnetIds
-        ALBSecurityGroupId:  !GetAtt SecurityStack.Outputs.ALBSecurityGroupId
-        EC2SecurityGroupId:  !GetAtt SecurityStack.Outputs.EC2SecurityGroupId
-        RDSSecurityGroupId:  !GetAtt SecurityStack.Outputs.RDSSecurityGroupId
-        DBEndpointAddress:   !GetAtt DatabaseStack.Outputs.DBEndpointAddress
-        DBPort:              !GetAtt DatabaseStack.Outputs.DBPort
-        LoadBalancerDNSName: !GetAtt LoadBalancerStack.Outputs.LoadBalancerDNSName
-        InstanceProfileName: !GetAtt IAMStack.Outputs.InstanceProfileName
+        PublicSubnetIds:     
+          Fn::GetAtt:
+            - NetworkStack
+            - Outputs.PublicSubnetIds
+        PrivateSubnetIds:    
+          Fn::GetAtt:
+            - NetworkStack
+            - Outputs.PrivateSubnetIds
+        ALBSecurityGroupId:  
+          Fn::GetAtt:
+            - SecurityStack
+            - Outputs.ALBSecurityGroupId
+        EC2SecurityGroupId:  
+          Fn::GetAtt:
+            - SecurityStack
+            - Outputs.EC2SecurityGroupId
+        RDSSecurityGroupId:  
+          Fn::GetAtt:
+            - SecurityStack
+            - Outputs.RDSSecurityGroupId
+        DBEndpointAddress:   
+          Fn::GetAtt:
+            - DatabaseStack
+            - Outputs.DBEndpointAddress
+        DBPort:              
+          Fn::GetAtt:
+            - DatabaseStack
+            - Outputs.DBPort
+        LoadBalancerDNSName: 
+          Fn::GetAtt:
+            - LoadBalancerStack
+            - Outputs.LoadBalancerDNSName
+        InstanceProfileName: 
+          Fn::GetAtt:
+            - IAMStack
+            - Outputs.InstanceProfileName
 
 
 Outputs: {}
