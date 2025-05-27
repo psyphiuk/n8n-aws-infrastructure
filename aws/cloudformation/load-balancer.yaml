@@ -20,7 +20,6 @@ Resources:
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: !Sub '${AWS::StackName}-alb'
       Scheme: internet-facing
       Type: application
       Subnets: !Ref PublicSubnetIds
@@ -30,7 +29,6 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub '${AWS::StackName}-tg'
       Port: 5678
       Protocol: HTTP
       VpcId: !Ref VpcId

@@ -205,7 +205,7 @@ Resources:
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/62b0077619eebbff89dcdcf0c644bc48.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/f7c356cdf5c72ee8360cc0203fc40e99.template
       Parameters:
         VpcId:
           Fn::GetAtt:
