@@ -154,7 +154,7 @@ Resources:
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/a6f9396a51890b65d9662d66ab371fa2.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/79501378e6c7fec5bf64a7a981814a36.template
       Parameters:
         AmiId:
           Ref: AmiId
@@ -202,6 +202,10 @@ Resources:
           Ref: RepoPath
         CliPluginsDir:
           Ref: CliPluginsDir
+        TargetGroupArn:
+          Fn::GetAtt:
+          - LoadBalancerStack
+          - Outputs.TargetGroupArn
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
     Properties:

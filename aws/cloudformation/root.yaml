@@ -188,6 +188,10 @@ Resources:
         DockerDir:               !Ref DockerDir
         RepoPath:                !Ref RepoPath
         CliPluginsDir:           !Ref CliPluginsDir
+        TargetGroupArn:          
+          Fn::GetAtt:
+            - LoadBalancerStack
+            - Outputs.TargetGroupArn
 
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack

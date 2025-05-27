@@ -70,7 +70,9 @@ Parameters:
     Type: String
     Default: '/usr/libexec/docker/cli-plugins'
     Description: Path to the directory containing the Compose CLI plugin
-  
+  TargetGroupArn:
+    Type: String
+    Description: ARN of the ALB’s target group
 
 Resources:
   N8nInstance:
@@ -133,3 +135,9 @@ Resources:
             # 5. Run the bootstrap script
             sudo -u ec2-user bash "${RepoPath}/aws/bootstrap.sh"
 
+  N8nInstanceTargetGroupAttachment:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
+    Properties:
+      TargetGroupArn: !Ref TargetGroupArn
+      TargetId:       !Ref N8nInstance
+      Port:           5678

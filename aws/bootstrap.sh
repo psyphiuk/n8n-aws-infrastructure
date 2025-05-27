@@ -17,7 +17,10 @@ set -euo pipefail
 # DOCKER_COMPOSE_BRANCH
 # DOCKER_COMPOSE_DIR
 
-WORKDIR="/home/ec2-user/n8n"
+# Use the default user's home (ubuntu on this AMI)
+USER_HOME=$(getent passwd ubuntu | cut -d: -f6)
+WORKDIR="${USER_HOME}/app"
+
 TARGET="${WORKDIR}/${DOCKER_COMPOSE_DIR}"
 REPO="${DOCKER_COMPOSE_REPO}"
 BRANCH="${DOCKER_COMPOSE_BRANCH}"
@@ -43,7 +46,7 @@ unzip -q /tmp/awscliv2.zip -d /tmp
 # ────────────────────────────
 # 2. Clone or update your repo
 # ────────────────────────────
-sudo -u ec2-user bash <<EOF
+sudo -u ubuntu bash <<EOF
 set -euo pipefail
 
 mkdir -p "${WORKDIR}"
@@ -54,8 +57,8 @@ else
   git pull
 fi
 
-# Ensure ec2-user owns everything
-chown -R ec2-user:ec2-user "\${WORKDIR}"
+# Ensure ubuntu owns everything
+chown -R ubuntu:ubuntu "\${WORKDIR}"
 EOF
 
 # ────────────────────────────
