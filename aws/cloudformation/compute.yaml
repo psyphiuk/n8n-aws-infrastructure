@@ -80,7 +80,7 @@ Resources:
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyName
       SubnetId: !Select [ 0, !Ref PrivateSubnetIds ]
-      SecurityGroupIds: !Ref EC2SecurityGroupId
+      SecurityGroupIds: [ !Ref EC2SecurityGroupId ]
       IamInstanceProfile: !Ref InstanceProfileName
       
       UserData:
