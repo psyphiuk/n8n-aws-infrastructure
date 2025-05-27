@@ -9,11 +9,11 @@ Parameters:
     Default: 10.0.0.0/16
     Description: CIDR block for the VPC
   PublicSubnetCIDRs:
-    Type: List<String>
+    Type: String
     Default: 10.0.1.0/24,10.0.2.0/24
     Description: Two public subnet CIDRs for the ALB and NAT gateway
   PrivateSubnetCIDRs:
-    Type: List<String>
+    Type: String
     Default: 10.0.101.0/24,10.0.102.0/24
     Description: Two private subnet CIDRs for your EC2 instances
   CertificateArn:
@@ -111,7 +111,7 @@ Resources:
   IAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/e97773fe6945188d3170a7c2f0a28fc6.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/bf2bfd229ecaf1f798b108627021ce5e.template
       Parameters:
         ClientName:
           Ref: ClientName
@@ -144,11 +144,9 @@ Resources:
         MultiAZ:
           Ref: MultiAZ
         DBSubnetIds:
-          Fn::Split:
-          - ','
-          - Fn::GetAtt:
-            - NetworkStack
-            - Outputs.PrivateSubnetIds
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PrivateSubnetIds
         RDSSecurityGroupId:
           Fn::GetAtt:
           - SecurityStack
@@ -165,11 +163,9 @@ Resources:
         KeyName:
           Ref: KeyName
         PrivateSubnetIds:
-          Fn::Split:
-          - ','
-          - Fn::GetAtt:
-            - NetworkStack
-            - Outputs.PrivateSubnetIds
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PrivateSubnetIds
         EC2SecurityGroupId:
           Fn::GetAtt:
           - SecurityStack
@@ -202,6 +198,10 @@ Resources:
           Ref: Timezone
         DockerDir:
           Ref: DockerDir
+        RepoPath:
+          Ref: RepoPath
+        CliPluginsDir:
+          Ref: CliPluginsDir
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -212,11 +212,9 @@ Resources:
           - NetworkStack
           - Outputs.VpcId
         PublicSubnetIds:
-          Fn::Split:
-          - ','
-          - Fn::GetAtt:
-            - NetworkStack
-            - Outputs.PublicSubnetIds
+          Fn::GetAtt:
+          - NetworkStack
+          - Outputs.PublicSubnetIds
         ALBSecurityGroupId:
           Fn::GetAtt:
           - SecurityStack

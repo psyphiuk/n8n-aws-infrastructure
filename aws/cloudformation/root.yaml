@@ -9,14 +9,14 @@ Parameters:
   # ────────── Network parameters ──────────
   VpcCidr:
     Type: String
-    Default: '10.0.0.0/16'
+    Default: "10.0.0.0/16"
     Description: CIDR block for the VPC
   PublicSubnetCIDRs:
-    Type: List<String>
+    Type: String
     Default: "10.0.1.0/24,10.0.2.0/24"
     Description: Two public subnet CIDRs for the ALB and NAT gateway
   PrivateSubnetCIDRs:
-    Type: List<String>
+    Type: String
     Default: "10.0.101.0/24,10.0.102.0/24"
     Description: Two private subnet CIDRs for your EC2 instances
   CertificateArn:
@@ -144,7 +144,10 @@ Resources:
         DBInstanceClass:           !Ref DBInstanceClass
         AllocatedStorage:          !Ref AllocatedStorage
         MultiAZ:                   !Ref MultiAZ
-        DBSubnetIds:               !Split [ ',', !GetAtt NetworkStack.Outputs.PrivateSubnetIds ]
+        DBSubnetIds:               
+          Fn::GetAtt:
+            - NetworkStack
+            - Outputs.PrivateSubnetIds
         RDSSecurityGroupId:        
           Fn::GetAtt:
             - SecurityStack
@@ -159,7 +162,10 @@ Resources:
         AmiId:                   !Ref AmiId
         InstanceType:            !Ref InstanceType
         KeyName:                 !Ref KeyName
-        PrivateSubnetIds:        !Split [ ',', !GetAtt NetworkStack.Outputs.PrivateSubnetIds ]
+        PrivateSubnetIds:        
+          Fn::GetAtt:
+            - NetworkStack
+            - Outputs.PrivateSubnetIds
         EC2SecurityGroupId:      
           Fn::GetAtt:
             - SecurityStack
@@ -180,6 +186,8 @@ Resources:
         BasicAuthPassword:       !Ref BasicAuthPassword
         Timezone:                !Ref Timezone
         DockerDir:               !Ref DockerDir
+        RepoPath:                !Ref RepoPath
+        CliPluginsDir:           !Ref CliPluginsDir
 
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
@@ -190,7 +198,10 @@ Resources:
          Fn::GetAtt:
           - NetworkStack
           - Outputs.VpcId
-        PublicSubnetIds:     !Split [ ',', !GetAtt NetworkStack.Outputs.PublicSubnetIds ]
+        PublicSubnetIds:     
+          Fn::GetAtt:
+            - NetworkStack
+            - Outputs.PublicSubnetIds
         ALBSecurityGroupId:  
           Fn::GetAtt:
             - SecurityStack
