@@ -19,9 +19,6 @@ Parameters:
     Type: String
     Default: "10.0.101.0/24,10.0.102.0/24"
     Description: Two private subnet CIDRs for your EC2 instances
-  CertificateArn:
-    Type: String
-    Description: ACM certificate ARN for your domain
 
   # ────────── Security & Database parameters ──────────
   PostgresDb:             
@@ -38,19 +35,6 @@ Parameters:
   SsmEncryptionKeyPath:   
     Type: String
     Description: SSM path for encryption key
-  DBInstanceClass:
-    Type: String
-    Default: db.t3.medium
-    Description: RDS instance class
-  AllocatedStorage:
-    Type: Number
-    Default: 20
-    Description: Storage in GB for the database
-  MultiAZ:
-    Type: String
-    AllowedValues: [ 'true', 'false' ]
-    Default: 'false'
-    Description: Enable Multi-AZ for high availability
   SSHCidr:
     Type: String
     Default: '0.0.0.0/0'
@@ -75,7 +59,7 @@ Parameters:
     Description: Git branch to clone
   InstanceType:
     Type: String
-    Default: t3.medium
+    Default: t3.small
     Description: EC2 instance type for n8n
   BasicAuthActive:        
     Type: String 
@@ -133,27 +117,6 @@ Resources:
           - Outputs.VpcId
         SSHCidr:  !Ref SSHCidr
 
-  DatabaseStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: database.yaml
-      Parameters:
-        DBName:                    !Ref PostgresDb
-        DBUsername:                !Ref PostgresUser
-        SSMPostgresPasswordPath:   !Ref SsmPostgresPasswordPath
-        DBInstanceClass:           !Ref DBInstanceClass
-        AllocatedStorage:          !Ref AllocatedStorage
-        MultiAZ:                   !Ref MultiAZ
-        DBSubnetIds:               
-          Fn::GetAtt:
-            - NetworkStack
-            - Outputs.PrivateSubnetIds
-        RDSSecurityGroupId:        
-          Fn::GetAtt:
-            - SecurityStack
-            - Outputs.RDSSecurityGroupId
-
-
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -188,29 +151,6 @@ Resources:
         DockerDir:               !Ref DockerDir
         RepoPath:                !Ref RepoPath
         CliPluginsDir:           !Ref CliPluginsDir
-        TargetGroupArn:          
-          Fn::GetAtt:
-            - LoadBalancerStack
-            - Outputs.TargetGroupArn
-
-  LoadBalancerStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: load-balancer.yaml
-      Parameters:
-        VpcId:    
-         Fn::GetAtt:
-          - NetworkStack
-          - Outputs.VpcId
-        PublicSubnetIds:     
-          Fn::GetAtt:
-            - NetworkStack
-            - Outputs.PublicSubnetIds
-        ALBSecurityGroupId:  
-          Fn::GetAtt:
-            - SecurityStack
-            - Outputs.ALBSecurityGroupId
-        CertificateArn:      !Ref CertificateArn
 
   OutputsStack:
     Type: AWS::CloudFormation::Stack
@@ -241,18 +181,6 @@ Resources:
           Fn::GetAtt:
             - SecurityStack
             - Outputs.RDSSecurityGroupId
-        DBEndpointAddress:   
-          Fn::GetAtt:
-            - DatabaseStack
-            - Outputs.DBEndpointAddress
-        DBPort:              
-          Fn::GetAtt:
-            - DatabaseStack
-            - Outputs.DBPort
-        LoadBalancerDNSName: 
-          Fn::GetAtt:
-            - LoadBalancerStack
-            - Outputs.LoadBalancerDNSName
         InstanceProfileName: 
           Fn::GetAtt:
             - IAMStack

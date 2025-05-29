@@ -1,102 +1,77 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ────────────────────────────
-# Required env vars (exported by CFN UserData)
-# ────────────────────────────
-# CLIENT_NAME
-# POSTGRES_DB
-# POSTGRES_NON_ROOT_USER
-# SSM_POSTGRES_PASSWORD_PATH
-# SSM_ENCRYPTION_KEY_PATH
-# N8N_BASIC_AUTH_ACTIVE
-# N8N_BASIC_AUTH_USER
-# N8N_BASIC_AUTH_PASSWORD
-# GENERIC_TIMEZONE
-# DOCKER_COMPOSE_REPO
-# DOCKER_COMPOSE_BRANCH
-# DOCKER_COMPOSE_DIR
+# Determine the non-root user home (ubuntu or ec2-user)
+USER_NAME=$(getent passwd 1000 | cut -d: -f1)
+USER_HOME=$(getent passwd "$USER_NAME" | cut -d: -f6)
 
-# Use the default user's home (ubuntu on this AMI)
-USER_HOME=$(getent passwd ubuntu | cut -d: -f6)
-WORKDIR="${USER_HOME}/app"
+LOGFILE=/var/log/bootstrap.log
+exec > >(tee -a "$LOGFILE") 2>&1
 
-TARGET="${WORKDIR}/${DOCKER_COMPOSE_DIR}"
-REPO="${DOCKER_COMPOSE_REPO}"
-BRANCH="${DOCKER_COMPOSE_BRANCH}"
+echo "[$(date)] Starting bootstrap on $(hostname) as $USER_NAME ($USER_HOME)"
 
-# ────────────────────────────
-# 1. Install Docker, Compose & AWS CLI
-# ────────────────────────────
-yum update -y
-amazon-linux-extras install docker -y
-systemctl enable docker
-systemctl start docker
-usermod -a -G docker ec2-user
-
-# Compose plugin
-yum install -y docker-compose-plugin
-
-# AWS CLI v2
-yum install -y unzip
-curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-unzip -q /tmp/awscliv2.zip -d /tmp
-/tmp/aws/install
-
-# ────────────────────────────
-# 2. Clone or update your repo
-# ────────────────────────────
-sudo -u ubuntu bash <<EOF
-set -euo pipefail
-
-mkdir -p "${WORKDIR}"
-if [ ! -d "${TARGET}/.git" ]; then
-  git clone --branch "\${BRANCH}" "\${REPO}" "\${TARGET}"
-else
-  cd "\${TARGET}"
-  git pull
+# 1. Install Docker & Compose plugin
+if ! command -v docker &>/dev/null; then
+  echo "Installing Docker..."
+  apt-get update
+  apt-get install -y docker.io unzip
+  systemctl enable docker
+  systemctl start docker
+  usermod -aG docker "$USER_NAME"
 fi
 
-# Ensure ubuntu owns everything
-chown -R ubuntu:ubuntu "\${WORKDIR}"
-EOF
+# Install Compose CLI plugin if missing
+CLI_PLUGINS_DIR=/usr/libexec/docker/cli-plugins
+if [ ! -x "$CLI_PLUGINS_DIR/docker-compose" ]; then
+  echo "Installing Docker Compose plugin..."
+  mkdir -p "$CLI_PLUGINS_DIR"
+  curl -fsSL \
+    "https://github.com/docker/compose/releases/download/v2.16.0/docker-compose-linux-x86_64" \
+    -o "$CLI_PLUGINS_DIR/docker-compose"
+  chmod +x "$CLI_PLUGINS_DIR/docker-compose"
+fi
 
-# ────────────────────────────
-# 3. Fetch secrets from SSM
-# ────────────────────────────
-DB_PASS=\$(aws ssm get-parameter \
-  --name "\${SSM_POSTGRES_PASSWORD_PATH}" \
-  --with-decryption \
-  --query Parameter.Value --output text)
+# 2. Install AWS CLI v2 if missing
+if ! command -v aws &>/dev/null; then
+  echo "Installing AWS CLI v2..."
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+  unzip -q /tmp/awscliv2.zip -d /tmp
+  /tmp/aws/install --update
+fi
 
-ENC_KEY=\$(aws ssm get-parameter \
-  --name "\${SSM_ENCRYPTION_KEY_PATH}" \
-  --with-decryption \
-  --query Parameter.Value --output text)
+# 3. Export parameters for compose
+export CLIENT_NAME=${ClientName:-}
+export POSTGRES_DB=${PostgresDb:-}
+export POSTGRES_NON_ROOT_USER=${PostgresUser:-}
+export POSTGRES_NON_ROOT_PASSWORD=$(aws ssm get-parameter --name "$SsmPostgresPasswordPath" --with-decryption --query Parameter.Value --output text)
+export ENCRYPTION_KEY=$(aws ssm get-parameter --name "$SsmEncryptionKeyPath" --with-decryption --query Parameter.Value --output text)
+export N8N_BASIC_AUTH_ACTIVE=${BasicAuthActive:-false}
+export N8N_BASIC_AUTH_USER=${BasicAuthUser:-}
+export N8N_BASIC_AUTH_PASSWORD=${BasicAuthPassword:-}
+export GENERIC_TIMEZONE=${Timezone:-UTC}
+export DOCKER_COMPOSE_REPO=${RepoURL:-}
+export DOCKER_COMPOSE_BRANCH=${RepoBranch:-main}
+export DOCKER_COMPOSE_DIR=${DockerDir:-docker}
 
-# ────────────────────────────
-# 4. Write the .env file
-# ────────────────────────────
-cat > "\${TARGET}/.env" <<ENV
-POSTGRES_DB=\${POSTGRES_DB}
-POSTGRES_NON_ROOT_USER=\${POSTGRES_NON_ROOT_USER}
-POSTGRES_NON_ROOT_PASSWORD=\${DB_PASS}
+# 4. Clone or update infra repo
+REPO_PATH="$USER_HOME/app"
+if [ ! -d "$REPO_PATH/.git" ]; then
+  echo "Cloning repo $DOCKER_COMPOSE_REPO#$DOCKER_COMPOSE_BRANCH into $REPO_PATH"
+  sudo -u "$USER_NAME" git clone --branch "$DOCKER_COMPOSE_BRANCH" "$DOCKER_COMPOSE_REPO" "$REPO_PATH"
+else
+  echo "Updating existing repo in $REPO_PATH"
+  cd "$REPO_PATH"
+  sudo -u "$USER_NAME" git pull
+fi
+chown -R "$USER_NAME:$USER_NAME" "$REPO_PATH"
 
-# n8n Basic Auth
-N8N_BASIC_AUTH_ACTIVE=\${N8N_BASIC_AUTH_ACTIVE}
-N8N_BASIC_AUTH_USER=\${N8N_BASIC_AUTH_USER}
-N8N_BASIC_AUTH_PASSWORD=\${N8N_BASIC_AUTH_PASSWORD}
+# 5. Run Docker Compose
+COMPOSE_PATH="$REPO_PATH/$DOCKER_COMPOSE_DIR/docker-compose.yml"
+echo "Bringing up docker compose stack from $COMPOSE_PATH"
+cd "$(dirname "$COMPOSE_PATH")"
+# ensure old containers are removed gracefully
+sudo -u "$USER_NAME" docker compose down || true
+sudo -u "$USER_NAME" docker compose pull
+sudo -u "$USER_NAME" docker compose up -d
 
-# Timezone
-GENERIC_TIMEZONE=\${GENERIC_TIMEZONE}
-
-# Encryption
-ENCRYPTION_KEY=\${ENC_KEY}
-ENV
-
-# ────────────────────────────
-# 5. Launch the stack
-# ────────────────────────────
-cd "\${TARGET}"
-docker compose pull
-docker compose up -d
+echo "[$(date)] Bootstrap complete"

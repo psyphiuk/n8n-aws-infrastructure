@@ -16,9 +16,6 @@ Parameters:
     Type: String
     Default: 10.0.101.0/24,10.0.102.0/24
     Description: Two private subnet CIDRs for your EC2 instances
-  CertificateArn:
-    Type: String
-    Description: ACM certificate ARN for your domain
   PostgresDb:
     Type: String
     Default: n8n
@@ -33,21 +30,6 @@ Parameters:
   SsmEncryptionKeyPath:
     Type: String
     Description: SSM path for encryption key
-  DBInstanceClass:
-    Type: String
-    Default: db.t3.medium
-    Description: RDS instance class
-  AllocatedStorage:
-    Type: Number
-    Default: 20
-    Description: Storage in GB for the database
-  MultiAZ:
-    Type: String
-    AllowedValues:
-    - 'true'
-    - 'false'
-    Default: 'false'
-    Description: Enable Multi-AZ for high availability
   SSHCidr:
     Type: String
     Default: 0.0.0.0/0
@@ -70,7 +52,7 @@ Parameters:
     Description: Git branch to clone
   InstanceType:
     Type: String
-    Default: t3.medium
+    Default: t3.small
     Description: EC2 instance type for n8n
   BasicAuthActive:
     Type: String
@@ -126,35 +108,10 @@ Resources:
           - Outputs.VpcId
         SSHCidr:
           Ref: SSHCidr
-  DatabaseStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/e8aea3ef06eceb6ecf97c41bcfab66dc.template
-      Parameters:
-        DBName:
-          Ref: PostgresDb
-        DBUsername:
-          Ref: PostgresUser
-        SSMPostgresPasswordPath:
-          Ref: SsmPostgresPasswordPath
-        DBInstanceClass:
-          Ref: DBInstanceClass
-        AllocatedStorage:
-          Ref: AllocatedStorage
-        MultiAZ:
-          Ref: MultiAZ
-        DBSubnetIds:
-          Fn::GetAtt:
-          - NetworkStack
-          - Outputs.PrivateSubnetIds
-        RDSSecurityGroupId:
-          Fn::GetAtt:
-          - SecurityStack
-          - Outputs.RDSSecurityGroupId
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/79501378e6c7fec5bf64a7a981814a36.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/a6f9396a51890b65d9662d66ab371fa2.template
       Parameters:
         AmiId:
           Ref: AmiId
@@ -202,33 +159,10 @@ Resources:
           Ref: RepoPath
         CliPluginsDir:
           Ref: CliPluginsDir
-        TargetGroupArn:
-          Fn::GetAtt:
-          - LoadBalancerStack
-          - Outputs.TargetGroupArn
-  LoadBalancerStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/f7c356cdf5c72ee8360cc0203fc40e99.template
-      Parameters:
-        VpcId:
-          Fn::GetAtt:
-          - NetworkStack
-          - Outputs.VpcId
-        PublicSubnetIds:
-          Fn::GetAtt:
-          - NetworkStack
-          - Outputs.PublicSubnetIds
-        ALBSecurityGroupId:
-          Fn::GetAtt:
-          - SecurityStack
-          - Outputs.ALBSecurityGroupId
-        CertificateArn:
-          Ref: CertificateArn
   OutputsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/fa7d11411d2e370b56908e534f9e0ed3.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/0301351c0953389a9d28980a8a2ec1ba.template
       Parameters:
         VpcId:
           Fn::GetAtt:
@@ -254,18 +188,6 @@ Resources:
           Fn::GetAtt:
           - SecurityStack
           - Outputs.RDSSecurityGroupId
-        DBEndpointAddress:
-          Fn::GetAtt:
-          - DatabaseStack
-          - Outputs.DBEndpointAddress
-        DBPort:
-          Fn::GetAtt:
-          - DatabaseStack
-          - Outputs.DBPort
-        LoadBalancerDNSName:
-          Fn::GetAtt:
-          - LoadBalancerStack
-          - Outputs.LoadBalancerDNSName
         InstanceProfileName:
           Fn::GetAtt:
           - IAMStack

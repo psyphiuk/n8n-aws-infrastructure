@@ -15,12 +15,6 @@ Parameters:
     Type: String
   RDSSecurityGroupId:
     Type: String
-  DBEndpointAddress:
-    Type: String
-  DBPort:
-    Type: String
-  LoadBalancerDNSName:
-    Type: String
   InstanceProfileName:
     Type: String
 
@@ -52,18 +46,6 @@ Outputs:
   RDSSecurityGroupId:
     Description: RDS Security Group ID
     Value: !Ref RDSSecurityGroupId
-
-  DBEndpoint:
-    Description: RDS endpoint address
-    Value: !Ref DBEndpointAddress
-
-  DBPort:
-    Description: RDS endpoint port
-    Value: !Ref DBPort
-
-  ALBDNSName:
-    Description: URL of the n8n load-balanced endpoint
-    Value: !Ref LoadBalancerDNSName
 
   EC2InstanceProfile:
     Description: Instance Profile for n8n EC2s
