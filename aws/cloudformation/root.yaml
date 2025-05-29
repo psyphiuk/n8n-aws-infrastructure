@@ -15,20 +15,8 @@ Parameters:
     Type: String
     Default: "10.0.1.0/24,10.0.2.0/24"
     Description: Two public subnet CIDRs for the ALB and NAT gateway
-  PrivateSubnetCIDRs:
-    Type: String
-    Default: "10.0.101.0/24,10.0.102.0/24"
-    Description: Two private subnet CIDRs for your EC2 instances
 
   # ────────── Security & Database parameters ──────────
-  PostgresDb:             
-    Type: String 
-    Default: n8n
-    Description: Postgres database name for n8n
-  PostgresUser:           
-    Type: String 
-    Default: n8n
-    Description: Postgres database user for n8n
   SsmPostgresPasswordPath: 
     Type: String 
     Description: SSM path for Postgres password
@@ -39,14 +27,6 @@ Parameters:
     Type: String
     Default: '0.0.0.0/0'
     Description: CIDR block for SSH access
-  RepoPath:
-    Type: String
-    Default: '/home/ec2-user/app'
-    Description: Relative path (in the repo) to your app directory
-  CliPluginsDir:
-    Type: String
-    Default: '/usr/libexec/docker/cli-plugins'
-    Description: Path to the directory containing the Compose CLI plugin
 
   # ────────── IAM & Compute parameters ──────────
   RepoURL:
@@ -97,7 +77,6 @@ Resources:
         # pass through any needed params…
         VpcCidr:              !Ref VpcCidr
         PublicSubnetCIDRs:    !Ref PublicSubnetCIDRs
-        PrivateSubnetCIDRs:   !Ref PrivateSubnetCIDRs
 
   IAMStack:
     Type: AWS::CloudFormation::Stack
@@ -125,10 +104,10 @@ Resources:
         AmiId:                   !Ref AmiId
         InstanceType:            !Ref InstanceType
         KeyName:                 !Ref KeyName
-        PrivateSubnetIds:        
+        PublicSubnetIds:        
           Fn::GetAtt:
             - NetworkStack
-            - Outputs.PrivateSubnetIds
+            - Outputs.PublicSubnetIds
         EC2SecurityGroupId:      
           Fn::GetAtt:
             - SecurityStack
@@ -140,8 +119,6 @@ Resources:
         ClientName:              !Ref ClientName
         RepoURL:                 !Ref RepoURL
         RepoBranch:              !Ref RepoBranch
-        PostgresDb:              !Ref PostgresDb
-        PostgresUser:            !Ref PostgresUser
         SsmPostgresPasswordPath: !Ref SsmPostgresPasswordPath
         SsmEncryptionKeyPath:    !Ref SsmEncryptionKeyPath
         BasicAuthActive:         !Ref BasicAuthActive
@@ -149,43 +126,6 @@ Resources:
         BasicAuthPassword:       !Ref BasicAuthPassword
         Timezone:                !Ref Timezone
         DockerDir:               !Ref DockerDir
-        RepoPath:                !Ref RepoPath
-        CliPluginsDir:           !Ref CliPluginsDir
-
-  OutputsStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: outputs.yaml
-      Parameters:
-        VpcId:    
-         Fn::GetAtt:
-          - NetworkStack
-          - Outputs.VpcId
-        PublicSubnetIds:     
-          Fn::GetAtt:
-            - NetworkStack
-            - Outputs.PublicSubnetIds
-        PrivateSubnetIds:    
-          Fn::GetAtt:
-            - NetworkStack
-            - Outputs.PrivateSubnetIds
-        ALBSecurityGroupId:  
-          Fn::GetAtt:
-            - SecurityStack
-            - Outputs.ALBSecurityGroupId
-        EC2SecurityGroupId:  
-          Fn::GetAtt:
-            - SecurityStack
-            - Outputs.EC2SecurityGroupId
-        RDSSecurityGroupId:  
-          Fn::GetAtt:
-            - SecurityStack
-            - Outputs.RDSSecurityGroupId
-        InstanceProfileName: 
-          Fn::GetAtt:
-            - IAMStack
-            - Outputs.InstanceProfileName
-
 
 Outputs: {}
   # You can aggregate or reference child‐stack outputs here

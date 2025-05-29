@@ -12,18 +12,6 @@ Parameters:
     Type: String
     Default: 10.0.1.0/24,10.0.2.0/24
     Description: Two public subnet CIDRs for the ALB and NAT gateway
-  PrivateSubnetCIDRs:
-    Type: String
-    Default: 10.0.101.0/24,10.0.102.0/24
-    Description: Two private subnet CIDRs for your EC2 instances
-  PostgresDb:
-    Type: String
-    Default: n8n
-    Description: Postgres database name for n8n
-  PostgresUser:
-    Type: String
-    Default: n8n
-    Description: Postgres database user for n8n
   SsmPostgresPasswordPath:
     Type: String
     Description: SSM path for Postgres password
@@ -34,14 +22,6 @@ Parameters:
     Type: String
     Default: 0.0.0.0/0
     Description: CIDR block for SSH access
-  RepoPath:
-    Type: String
-    Default: /home/ec2-user/app
-    Description: Relative path (in the repo) to your app directory
-  CliPluginsDir:
-    Type: String
-    Default: /usr/libexec/docker/cli-plugins
-    Description: Path to the directory containing the Compose CLI plugin
   RepoURL:
     Type: String
     Default: https://github.com/psyphiuk/n8n-aws-infrastructure
@@ -82,14 +62,12 @@ Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/8766ae6561e2b4d504481be4f6528c04.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/f61b2fb8a0ca2dbdb3ee58382f0ac848.template
       Parameters:
         VpcCidr:
           Ref: VpcCidr
         PublicSubnetCIDRs:
           Ref: PublicSubnetCIDRs
-        PrivateSubnetCIDRs:
-          Ref: PrivateSubnetCIDRs
   IAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -100,7 +78,7 @@ Resources:
   SecurityStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/405d3e0db8b5120cfe8c5f4b676f86fe.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/fee9afac63ea227cff170355e7c04811.template
       Parameters:
         VpcId:
           Fn::GetAtt:
@@ -111,7 +89,7 @@ Resources:
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/a6f9396a51890b65d9662d66ab371fa2.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/a4168a2539a779c5e33d25773541814c.template
       Parameters:
         AmiId:
           Ref: AmiId
@@ -119,10 +97,10 @@ Resources:
           Ref: InstanceType
         KeyName:
           Ref: KeyName
-        PrivateSubnetIds:
+        PublicSubnetIds:
           Fn::GetAtt:
           - NetworkStack
-          - Outputs.PrivateSubnetIds
+          - Outputs.PublicSubnetIds
         EC2SecurityGroupId:
           Fn::GetAtt:
           - SecurityStack
@@ -137,10 +115,6 @@ Resources:
           Ref: RepoURL
         RepoBranch:
           Ref: RepoBranch
-        PostgresDb:
-          Ref: PostgresDb
-        PostgresUser:
-          Ref: PostgresUser
         SsmPostgresPasswordPath:
           Ref: SsmPostgresPasswordPath
         SsmEncryptionKeyPath:
@@ -155,41 +129,4 @@ Resources:
           Ref: Timezone
         DockerDir:
           Ref: DockerDir
-        RepoPath:
-          Ref: RepoPath
-        CliPluginsDir:
-          Ref: CliPluginsDir
-  OutputsStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/0301351c0953389a9d28980a8a2ec1ba.template
-      Parameters:
-        VpcId:
-          Fn::GetAtt:
-          - NetworkStack
-          - Outputs.VpcId
-        PublicSubnetIds:
-          Fn::GetAtt:
-          - NetworkStack
-          - Outputs.PublicSubnetIds
-        PrivateSubnetIds:
-          Fn::GetAtt:
-          - NetworkStack
-          - Outputs.PrivateSubnetIds
-        ALBSecurityGroupId:
-          Fn::GetAtt:
-          - SecurityStack
-          - Outputs.ALBSecurityGroupId
-        EC2SecurityGroupId:
-          Fn::GetAtt:
-          - SecurityStack
-          - Outputs.EC2SecurityGroupId
-        RDSSecurityGroupId:
-          Fn::GetAtt:
-          - SecurityStack
-          - Outputs.RDSSecurityGroupId
-        InstanceProfileName:
-          Fn::GetAtt:
-          - IAMStack
-          - Outputs.InstanceProfileName
 Outputs: {}

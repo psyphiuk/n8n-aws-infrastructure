@@ -41,7 +41,7 @@ services:
 
       # Encryption & file-perm enforcement
       - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
     volumes:
       - n8n_config:/home/node/.n8n
       - ./docker:/data
