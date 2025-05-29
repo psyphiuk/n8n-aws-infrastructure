@@ -138,6 +138,6 @@ Resources:
   N8nInstanceTargetGroupAttachment:
     Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
     Properties:
-      TargetGroupArn: !Select [ 0, !Ref TargetGroupArn ]
+      TargetGroupArn: !Ref TargetGroupArn
       TargetId:       !Ref N8nInstance
       Port:           5678
