@@ -66,6 +66,18 @@ Parameters:
   InstanceProfileName:
     Type: String
     Description: IAM Instance Profile name for the EC2 role
+  UserHome:
+    Type: String
+    Default: "/ec2-user"
+    Description: User home directory for the AMI
+  UserName:
+    Type: String
+    Default: ec2-user
+    Description: User name for the AMI
+  RepoPath:
+    Type: String
+    Default: "/home/ec2-user/app"
+    Description: Path to the repo in the AMI
 
 Resources:
   N8nEC2Instance:
@@ -93,8 +105,8 @@ Resources:
             fi
 
             # Detect non-root user
-            USER_NAME=$(getent passwd 1000 | cut -d: -f1)
-            USER_HOME=$(getent passwd "${USER_NAME}" | cut -d: -f6)
+            UserName=$(getent passwd 1000 | cut -d: -f1)
+            UserHome=$(getent passwd "${UserName}" | cut -d: -f6)
 
             # Export application parameters
             export CLIENT_NAME="${ClientName}"
@@ -111,17 +123,17 @@ Resources:
             export DOCKER_COMPOSE_DIR="${DockerDir}"
 
             # Clone or update infra repo
-            REPO_PATH="${USER_HOME}/app"
-            if [ ! -d "${REPO_PATH}/.git" ]; then
-              sudo -u "${USER_NAME}" git clone --branch "${RepoBranch}" "${RepoURL}" "${REPO_PATH}"
+            RepoPath="${UserHome}/app"
+            if [ ! -d "${RepoPath}/.git" ]; then
+              sudo -u "${UserName}" git clone --branch "${RepoBranch}" "${RepoURL}" "${RepoPath}"
             else
-              cd "${REPO_PATH}"
-              sudo -u "${USER_NAME}" git pull
+              cd "${RepoPath}"
+              sudo -u "${UserName}" git pull
             fi
-            chown -R "${USER_NAME}:${USER_NAME}" "${REPO_PATH}"
+            chown -R "${UserName}:${UserName}" "${RepoPath}"
 
             # Execute bootstrap script
-            sudo -u "${USER_NAME}" bash "${REPO_PATH}/aws/bootstrap.sh"
+            sudo -u "${UserName}" bash "${RepoPath}/aws/bootstrap.sh"
 
 Outputs:
   InstanceId:
