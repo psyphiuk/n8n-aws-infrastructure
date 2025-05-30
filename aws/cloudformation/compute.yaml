@@ -84,43 +84,55 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfileName
       UserData:
         Fn::Base64:
-          Fn::Join:
-            - ""
-            - - "#!/usr/bin/env bash\n"
-              - "echo '>>> USERDATA STARTED' > /tmp/udata-marker.log\n"
-              - "exec > >(tee -a /var/log/bootstrap.log) 2>&1\n"
-              - "set -euxo pipefail\n"
-              - "\n"
-              - "# Detect non-root user\n"
-              - "USER_NAME=$(getent passwd 1000 | cut -d: -f1)\n"
-              - "USER_HOME=$(getent passwd \"${USER_NAME}\" | cut -d: -f6)\n"
-              - "\n"
-              - "# Export application parameters\n"
-              - "export CLIENT_NAME=\"${ClientName}\"\n"
-              - "export POSTGRES_DB=\"${PostgresDb}\"\n"
-              - "export POSTGRES_NON_ROOT_USER=\"${PostgresUser}\"\n"
-              - "export SSM_POSTGRES_PASSWORD_PATH=\"${SsmPostgresPasswordPath}\"\n"
-              - "export SSM_ENCRYPTION_KEY_PATH=\"${SsmEncryptionKeyPath}\"\n"
-              - "export N8N_BASIC_AUTH_ACTIVE=\"${BasicAuthActive}\"\n"
-              - "export N8N_BASIC_AUTH_USER=\"${BasicAuthUser}\"\n"
-              - "export N8N_BASIC_AUTH_PASSWORD=\"${BasicAuthPassword}\"\n"
-              - "export GENERIC_TIMEZONE=\"${Timezone}\"\n"
-              - "export DOCKER_COMPOSE_REPO=\"${RepoURL}\"\n"
-              - "export DOCKER_COMPOSE_BRANCH=\"${RepoBranch}\"\n"
-              - "export DOCKER_COMPOSE_DIR=\"${DockerDir}\"\n"
-              - "\n"
-              - "# Clone or update infra repo\n"
-              - "REPO_PATH=\"$${USER_HOME}/app\"\n"
-              - "if [ ! -d \"$${REPO_PATH}/.git\" ]; then\n"
-              - "  sudo -u \"$${USER_NAME}\" git clone --branch \"${RepoBranch}\" \"${RepoURL}\" \"$${REPO_PATH}\"\n"
-              - "else\n"
-              - "  cd \"$${REPO_PATH}\"\n"
-              - "  sudo -u \"$${USER_NAME}\" git pull\n"
-              - "fi\n"
-              - "chown -R \"$${USER_NAME}:$${USER_NAME}\" \"$${REPO_PATH}\"\n"
-              - "\n"
-              - "# Run bootstrap script\n"
-              - "sudo -u \"$${USER_NAME}\" bash \"$${REPO_PATH}/aws/bootstrap.sh\"\n"
+          Fn::Sub:
+            - |
+              #!/usr/bin/env bash
+              echo '>>> USERDATA STARTED' > /tmp/udata-marker.log
+              exec > >(tee -a /var/log/bootstrap.log) 2>&1
+              set -euxo pipefail
+
+              # Detect non-root user
+              USER_NAME=$(getent passwd 1000 | cut -d: -f1)
+              USER_HOME=$(getent passwd "${!USER_NAME}" | cut -d: -f6)
+
+              # Export application parameters
+              export CLIENT_NAME="${ClientName}"
+              export POSTGRES_DB="${PostgresDb}"
+              export POSTGRES_NON_ROOT_USER="${PostgresUser}"
+              export SSM_POSTGRES_PASSWORD_PATH="${SsmPostgresPasswordPath}"
+              export SSM_ENCRYPTION_KEY_PATH="${SsmEncryptionKeyPath}"
+              export N8N_BASIC_AUTH_ACTIVE="${BasicAuthActive}"
+              export N8N_BASIC_AUTH_USER="${BasicAuthUser}"
+              export N8N_BASIC_AUTH_PASSWORD="${BasicAuthPassword}"
+              export GENERIC_TIMEZONE="${Timezone}"
+              export DOCKER_COMPOSE_REPO="${RepoURL}"
+              export DOCKER_COMPOSE_BRANCH="${RepoBranch}"
+              export DOCKER_COMPOSE_DIR="${DockerDir}"
+
+              # Clone or update infra repo
+              REPO_PATH="${!USER_HOME}/app"
+              if [ ! -d "${!REPO_PATH}/.git" ]; then
+                sudo -u "${!USER_NAME}" git clone --branch "${RepoBranch}" "${RepoURL}" "${!REPO_PATH}"
+              else
+                cd "${!REPO_PATH}"
+                sudo -u "${!USER_NAME}" git pull
+              fi
+              chown -R "${!USER_NAME}:""${!USER_NAME}" "${!REPO_PATH}"
+
+              # Run bootstrap script
+              sudo -u "${!USER_NAME}" bash "${!REPO_PATH}/aws/bootstrap.sh"
+            - ClientName: !Ref ClientName
+              PostgresDb: !Ref PostgresDb
+              PostgresUser: !Ref PostgresUser
+              SsmPostgresPasswordPath: !Ref SsmPostgresPasswordPath
+              SsmEncryptionKeyPath: !Ref SsmEncryptionKeyPath
+              BasicAuthActive: !Ref BasicAuthActive
+              BasicAuthUser: !Ref BasicAuthUser
+              BasicAuthPassword: !Ref BasicAuthPassword
+              Timezone: !Ref Timezone
+              RepoURL: !Ref RepoURL
+              RepoBranch: !Ref RepoBranch
+              DockerDir: !Ref DockerDir
 
   N8nDbBackupDocument:
     Type: AWS::SSM::Document

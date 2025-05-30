@@ -89,7 +89,7 @@ Resources:
   ComputeStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/4c081204292c99954f50ff3a7d6a4410.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/e6a97e8fdfe766e934b4f03cdec22601.template
       Parameters:
         AmiId:
           Ref: AmiId
