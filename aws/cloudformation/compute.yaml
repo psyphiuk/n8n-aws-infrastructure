@@ -87,7 +87,7 @@ Resources:
           Fn::Sub:
             - |
               #!/usr/bin/env bash
-              echo '>>> USERDATA STARTED' > /tmp/udata-marker.log
+              echo '>>> USERDATA STARTED v1.0' > /tmp/udata-marker.log
               exec > >(tee -a /var/log/bootstrap.log) 2>&1
               set -euxo pipefail
 
