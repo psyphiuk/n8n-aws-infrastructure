@@ -120,7 +120,7 @@ Resources:
               chown -R "${!USER_NAME}:""${!USER_NAME}" "${!REPO_PATH}"
 
               # Run bootstrap script
-              sudo -u "${!USER_NAME}" bash "${!REPO_PATH}/aws/bootstrap.sh"
+              bash "${!REPO_PATH}/aws/bootstrap.sh"
             - ClientName: !Ref ClientName
               PostgresDb: !Ref PostgresDb
               PostgresUser: !Ref PostgresUser

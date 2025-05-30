@@ -50,28 +50,19 @@ export N8N_BASIC_AUTH_USER=${BasicAuthUser:-}
 export N8N_BASIC_AUTH_PASSWORD=${BasicAuthPassword:-}
 export GENERIC_TIMEZONE=${Timezone:-UTC}
 export DOCKER_COMPOSE_REPO=${RepoURL:-}
-export DOCKER_COMPOSE_BRANCH=${RepoBranch:-main}
+export DOCKER_COMPOSE_BRANCH=${RepoBranch:-master}
 export DOCKER_COMPOSE_DIR=${DockerDir:-docker}
 
-# 4. Clone or update infra repo
-REPO_PATH="$USER_HOME/app"
-if [ ! -d "$REPO_PATH/.git" ]; then
-  echo "Cloning repo $DOCKER_COMPOSE_REPO#$DOCKER_COMPOSE_BRANCH into $REPO_PATH"
-  sudo -u "$USER_NAME" git clone --branch "$DOCKER_COMPOSE_BRANCH" "$DOCKER_COMPOSE_REPO" "$REPO_PATH"
+if [ ! -d "${USER_HOME}/app/.git" ]; then
+  git clone --branch "${RepoBranch}" "${RepoURL}" "${USER_HOME}/app"
 else
-  echo "Updating existing repo in $REPO_PATH"
-  cd "$REPO_PATH"
-  sudo -u "$USER_NAME" git pull
+  cd "${USER_HOME}/app"
+  git pull
 fi
-chown -R "$USER_NAME:$USER_NAME" "$REPO_PATH"
+chown -R "${USER_NAME}:${USER_NAME}" "${USER_HOME}/app"
 
-# 5. Run Docker Compose
-COMPOSE_PATH="$REPO_PATH/$DOCKER_COMPOSE_DIR/docker-compose.yml"
-echo "Bringing up docker compose stack from $COMPOSE_PATH"
-cd "$(dirname "$COMPOSE_PATH")"
-# ensure old containers are removed gracefully
-sudo -u "$USER_NAME" docker compose down || true
-sudo -u "$USER_NAME" docker compose pull
-sudo -u "$USER_NAME" docker compose up -d
+# 4. Launch Docker Compose as ubuntu
+cd "${USER_HOME}/app/${DockerDir}"
+sudo -u "${USER_NAME}" docker compose up -d
 
 echo "[$(date)] Bootstrap complete"
