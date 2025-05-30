@@ -33,7 +33,7 @@ Parameters:
     Description: true|false to enable basic auth
   BasicAuthUser:
     Type: String
-    Description: Basic auth username for n8n
+    Description: Basic auth USER_NAME for n8n
   BasicAuthPassword:
     Type: String
     Description: Basic auth password for n8n
@@ -66,18 +66,6 @@ Parameters:
   InstanceProfileName:
     Type: String
     Description: IAM Instance Profile name for the EC2 role
-  UserHome:
-    Type: String
-    Default: "/ec2-user"
-    Description: User home directory for the AMI
-  UserName:
-    Type: String
-    Default: ec2-user
-    Description: User name for the AMI
-  RepoPath:
-    Type: String
-    Default: "/home/ec2-user/app"
-    Description: Path to the repo in the AMI
   BackupBucketName:
     Type: String
     Default: n8n-backup
@@ -96,48 +84,41 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfileName
       UserData:
         Fn::Base64:
-          Fn::Sub: |
-            #!/usr/bin/env bash
-            set -euxo pipefail
-
-            # Ensure git/unzip available
-            if command -v yum &>/dev/null; then
-              yum install -y git unzip
-            else
-              apt-get update
-              apt-get install -y git unzip
-            fi
-
-            # Detect non-root user
-            UserName=$(getent passwd 1000 | cut -d: -f1)
-            UserHome=$(getent passwd "${UserName}" | cut -d: -f6)
-
-            # Export application parameters
-            export CLIENT_NAME="${ClientName}"
-            export POSTGRES_DB="${PostgresDb}"
-            export POSTGRES_NON_ROOT_USER="${PostgresUser}"
-            export SSM_POSTGRES_PASSWORD_PATH="${SsmPostgresPasswordPath}"
-            export SSM_ENCRYPTION_KEY_PATH="${SsmEncryptionKeyPath}"
-            export N8N_BASIC_AUTH_ACTIVE="${BasicAuthActive}"
-            export N8N_BASIC_AUTH_USER="${BasicAuthUser}"
-            export N8N_BASIC_AUTH_PASSWORD="${BasicAuthPassword}"
-            export GENERIC_TIMEZONE="${Timezone}"
-            export DOCKER_COMPOSE_REPO="${RepoURL}"
-            export DOCKER_COMPOSE_BRANCH="${RepoBranch}"
-            export DOCKER_COMPOSE_DIR="${DockerDir}"
-
-            # Clone or update infra repo
-            RepoPath="${UserHome}/app"
-            if [ ! -d "${RepoPath}/.git" ]; then
-              sudo -u "${UserName}" git clone --branch "${RepoBranch}" "${RepoURL}" "${RepoPath}"
-            else
-              cd "${RepoPath}"
-              sudo -u "${UserName}" git pull
-            fi
-            chown -R "${UserName}:${UserName}" "${RepoPath}"
-
-            # Execute bootstrap script
-            sudo -u "${UserName}" bash "${RepoPath}/aws/bootstrap.sh"
+          Fn::Join:
+            - ''    # join on empty string
+            - - "#!/usr/bin/env bash\n"
+              - "set -euxo pipefail\n"
+              - "\n"
+              - "# Detect non-root user\n"
+              - "USER_NAME=$(getent passwd 1000 | cut -d: -f1)\n"
+              - "USER_HOME=$(getent passwd \"$USER_NAME\" | cut -d: -f6)\n"
+              - "\n"
+              - "# Export application parameters\n"
+              - "export CLIENT_NAME=${ClientName}\n"
+              - "export POSTGRES_DB=${PostgresDb}\n"
+              - "export POSTGRES_NON_ROOT_USER=${PostgresUser}\n"
+              - "export SSM_POSTGRES_PASSWORD_PATH=${SsmPostgresPasswordPath}\n"
+              - "export SSM_ENCRYPTION_KEY_PATH=${SsmEncryptionKeyPath}\n"
+              - "export N8N_BASIC_AUTH_ACTIVE=${BasicAuthActive}\n"
+              - "export N8N_BASIC_AUTH_USER=${BasicAuthUser}\n"
+              - "export N8N_BASIC_AUTH_PASSWORD=${BasicAuthPassword}\n"
+              - "export GENERIC_TIMEZONE=${Timezone}\n"
+              - "export DOCKER_COMPOSE_REPO=${RepoURL}\n"
+              - "export DOCKER_COMPOSE_BRANCH=${RepoBranch}\n"
+              - "export DOCKER_COMPOSE_DIR=${DockerDir}\n"
+              - "\n"
+              - "# Clone or update infra repo\n"
+              - "REPO_PATH=\"$${USER_HOME}/app\"\n"
+              - "if [ ! -d \"$${REPO_PATH}/.git\" ]; then\n"
+              - "  sudo -u \"$${USER_NAME}\" git clone --branch \"${RepoBranch}\" \"${RepoURL}\" \"$${REPO_PATH}\"\n"
+              - "else\n"
+              - "  cd \"$${REPO_PATH}\"\n"
+              - "  sudo -u \"$${USER_NAME}\" git pull\n"
+              - "fi\n"
+              - "chown -R \"$${USER_NAME}:$${USER_NAME}\" \"$${REPO_PATH}\"\n"
+              - "\n"
+              - "# Run bootstrap\n"
+              - "sudo -u \"$${USER_NAME}\" bash \"$${REPO_PATH}/aws/bootstrap.sh\"\n"
 
   N8nDbBackupDocument:
     Type: AWS::SSM::Document
