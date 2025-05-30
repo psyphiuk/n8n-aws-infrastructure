@@ -35,8 +35,8 @@ fi
 
 # 3. Fetch secrets from SSM
 : "Fetching Postgres password and encryption key from SSM"
-POSTGRES_NON_ROOT_PASSWORD=$(aws ssm get-parameter --name "$SSM_POSTGRES_PASSWORD_PATH" --with-decryption --query Parameter.Value --output text)
-ENCRYPTION_KEY=$(aws ssm get-parameter --name "$SSM_ENCRYPTION_KEY_PATH" --with-decryption --query Parameter.Value --output text)
+export POSTGRES_NON_ROOT_PASSWORD=$(aws ssm get-parameter --name "$SSM_POSTGRES_PASSWORD_PATH" --with-decryption --query Parameter.Value --output text)
+export ENCRYPTION_KEY=$(aws ssm get-parameter --name "$SSM_ENCRYPTION_KEY_PATH" --with-decryption --query Parameter.Value --output text)
 
 # 4. Determine non-root user and repo path
 USER_NAME=$(getent passwd 1000 | cut -d: -f1 || echo ubuntu)
@@ -61,8 +61,8 @@ chown -R "$USER_NAME:$USER_NAME" "$REPO_PATH"
 if [ -d "$DOCKER_DIR" ]; then
   echo "Starting Docker Compose services from $DOCKER_DIR"
   cd "$DOCKER_DIR"
-  sudo -u "$USER_NAME" docker compose pull
-  sudo -u "$USER_NAME" docker compose up -d
+  docker compose pull
+  docker compose up -d
 else
   echo "ERROR: Docker directory $DOCKER_DIR not found"
   exit 1
