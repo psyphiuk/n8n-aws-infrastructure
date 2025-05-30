@@ -198,6 +198,11 @@ Resources:
         - Arn: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/${N8nDbBackupDocument}
           Id: N8nBackupTarget
           RoleArn: !GetAtt N8nBackupEventsRole.Arn
+          RunCommandParameters:
+            RunCommandTargets:
+              - Key: InstanceIds
+                Values:
+                  - !Ref N8nEC2Instance
             
 Outputs:
   InstanceId:
