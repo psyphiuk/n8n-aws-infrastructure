@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-LOGFILE=/var/log/bootstrap.log
-exec > >(tee -a "$LOGFILE") 2>&1
-
-echo "[$(date)] Starting bootstrap on $(hostname)"
+set -euxo pipefail
 
 # 1. Install Docker & Compose plugin if missing
 if ! command -v docker &>/dev/null; then
@@ -19,7 +14,7 @@ if ! command -v docker &>/dev/null; then
   systemctl start docker
 fi
 
-# Install Compose CLI plugin
+# Install Compose CLI plugin if missing
 CLI_PLUGINS_DIR=/usr/libexec/docker/cli-plugins
 if [ ! -x "$CLI_PLUGINS_DIR/docker-compose" ]; then
   echo "Installing Docker Compose plugin..."
@@ -39,8 +34,9 @@ if ! command -v aws &>/dev/null; then
 fi
 
 # 3. Fetch secrets from SSM
-export POSTGRES_NON_ROOT_PASSWORD=$(aws ssm get-parameter --name "$SSM_POSTGRES_PASSWORD_PATH" --with-decryption --query Parameter.Value --output text)
-export ENCRYPTION_KEY=$(aws ssm get-parameter --name "$SSM_ENCRYPTION_KEY_PATH" --with-decryption --query Parameter.Value --output text)
+: "Fetching Postgres password and encryption key from SSM"
+POSTGRES_NON_ROOT_PASSWORD=$(aws ssm get-parameter --name "$SSM_POSTGRES_PASSWORD_PATH" --with-decryption --query Parameter.Value --output text)
+ENCRYPTION_KEY=$(aws ssm get-parameter --name "$SSM_ENCRYPTION_KEY_PATH" --with-decryption --query Parameter.Value --output text)
 
 # 4. Determine non-root user and repo path
 USER_NAME=$(getent passwd 1000 | cut -d: -f1 || echo ubuntu)
@@ -50,21 +46,21 @@ DOCKER_DIR="$REPO_PATH/$DOCKER_COMPOSE_DIR"
 
 # 5. Clone or update infra repo
 if [ ! -d "$REPO_PATH/.git" ]; then
-  echo "Cloning repo $DOCKER_COMPOSE_BRANCH from $DOCKER_COMPOSE_REPO"
+  echo "Cloning infra repo $DOCKER_COMPOSE_BRANCH from $DOCKER_COMPOSE_REPO to $REPO_PATH"
   sudo -u "$USER_NAME" git clone --branch "$DOCKER_COMPOSE_BRANCH" "$DOCKER_COMPOSE_REPO" "$REPO_PATH"
 else
-  echo "Updating existing repo"
+  echo "Updating infra repo in $REPO_PATH"
   cd "$REPO_PATH"
   sudo -u "$USER_NAME" git pull
 fi
-# allow safe directory for git
+# After clone/update, allow safe directory for further git commands
 sudo -u "$USER_NAME" git config --global --add safe.directory "$REPO_PATH"
 chown -R "$USER_NAME:$USER_NAME" "$REPO_PATH"
 
-# 6. Run Docker Compose
+# 6. Run Docker Compose as ubuntu
 if [ -d "$DOCKER_DIR" ]; then
+  echo "Starting Docker Compose services from $DOCKER_DIR"
   cd "$DOCKER_DIR"
-  echo "Starting Docker Compose services"
   sudo -u "$USER_NAME" docker compose pull
   sudo -u "$USER_NAME" docker compose up -d
 else
@@ -72,4 +68,12 @@ else
   exit 1
 fi
 
-echo "[$(date)] Bootstrap complete"
+# 7. Test health endpoint
+if curl -sS http://localhost:5678/healthz; then
+  echo "n8n health check passed"
+else
+  echo "n8n health check failed" >&2
+  exit 1
+fi
+
+echo "Bootstrap complete"
