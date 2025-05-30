@@ -1,26 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Determine the non-root user home (ubuntu or ec2-user)
-USER_NAME=$(getent passwd 1000 | cut -d: -f1)
-USER_HOME=$(getent passwd "$USER_NAME" | cut -d: -f6)
-
 LOGFILE=/var/log/bootstrap.log
 exec > >(tee -a "$LOGFILE") 2>&1
 
-echo "[$(date)] Starting bootstrap on $(hostname) as $USER_NAME ($USER_HOME)"
+echo "[$(date)] Starting bootstrap on $(hostname)"
 
-# 1. Install Docker & Compose plugin
+# 1. Install Docker & Compose plugin if missing
 if ! command -v docker &>/dev/null; then
   echo "Installing Docker..."
-  apt-get update
-  apt-get install -y docker.io unzip
+  if command -v yum &>/dev/null; then
+    yum install -y docker.io unzip
+  else
+    apt-get update
+    apt-get install -y docker.io unzip
+  fi
   systemctl enable docker
   systemctl start docker
-  usermod -aG docker "$USER_NAME"
 fi
 
-# Install Compose CLI plugin if missing
+# Install Compose CLI plugin
 CLI_PLUGINS_DIR=/usr/libexec/docker/cli-plugins
 if [ ! -x "$CLI_PLUGINS_DIR/docker-compose" ]; then
   echo "Installing Docker Compose plugin..."
@@ -39,30 +38,38 @@ if ! command -v aws &>/dev/null; then
   /tmp/aws/install --update
 fi
 
-# 3. Export parameters for compose
-export CLIENT_NAME=${ClientName:-}
-export POSTGRES_DB=${PostgresDb:-}
-export POSTGRES_NON_ROOT_USER=${PostgresUser:-}
-export POSTGRES_NON_ROOT_PASSWORD=$(aws ssm get-parameter --name "$SsmPostgresPasswordPath" --with-decryption --query Parameter.Value --output text)
-export ENCRYPTION_KEY=$(aws ssm get-parameter --name "$SsmEncryptionKeyPath" --with-decryption --query Parameter.Value --output text)
-export N8N_BASIC_AUTH_ACTIVE=${BasicAuthActive:-false}
-export N8N_BASIC_AUTH_USER=${BasicAuthUser:-}
-export N8N_BASIC_AUTH_PASSWORD=${BasicAuthPassword:-}
-export GENERIC_TIMEZONE=${Timezone:-UTC}
-export DOCKER_COMPOSE_REPO=${RepoURL:-}
-export DOCKER_COMPOSE_BRANCH=${RepoBranch:-master}
-export DOCKER_COMPOSE_DIR=${DockerDir:-docker}
+# 3. Fetch secrets from SSM
+export POSTGRES_NON_ROOT_PASSWORD=$(aws ssm get-parameter --name "$SSM_POSTGRES_PASSWORD_PATH" --with-decryption --query Parameter.Value --output text)
+export ENCRYPTION_KEY=$(aws ssm get-parameter --name "$SSM_ENCRYPTION_KEY_PATH" --with-decryption --query Parameter.Value --output text)
 
-if [ ! -d "${USER_HOME}/app/.git" ]; then
-  git clone --branch "${RepoBranch}" "${RepoURL}" "${USER_HOME}/app"
+# 4. Determine non-root user and repo path
+USER_NAME=$(getent passwd 1000 | cut -d: -f1 || echo ubuntu)
+USER_HOME=$(getent passwd "$USER_NAME" | cut -d: -f6)
+REPO_PATH="$USER_HOME/app"
+DOCKER_DIR="$REPO_PATH/$DOCKER_COMPOSE_DIR"
+
+# 5. Clone or update infra repo
+if [ ! -d "$REPO_PATH/.git" ]; then
+  echo "Cloning repo $DOCKER_COMPOSE_BRANCH from $DOCKER_COMPOSE_REPO"
+  sudo -u "$USER_NAME" git clone --branch "$DOCKER_COMPOSE_BRANCH" "$DOCKER_COMPOSE_REPO" "$REPO_PATH"
 else
-  cd "${USER_HOME}/app"
-  git pull
+  echo "Updating existing repo"
+  cd "$REPO_PATH"
+  sudo -u "$USER_NAME" git pull
 fi
-chown -R "${USER_NAME}:${USER_NAME}" "${USER_HOME}/app"
+# allow safe directory for git
+sudo -u "$USER_NAME" git config --global --add safe.directory "$REPO_PATH"
+chown -R "$USER_NAME:$USER_NAME" "$REPO_PATH"
 
-# 4. Launch Docker Compose as ubuntu
-cd "${USER_HOME}/app/${DockerDir}"
-sudo -u "${USER_NAME}" docker compose up -d
+# 6. Run Docker Compose
+if [ -d "$DOCKER_DIR" ]; then
+  cd "$DOCKER_DIR"
+  echo "Starting Docker Compose services"
+  sudo -u "$USER_NAME" docker compose pull
+  sudo -u "$USER_NAME" docker compose up -d
+else
+  echo "ERROR: Docker directory $DOCKER_DIR not found"
+  exit 1
+fi
 
 echo "[$(date)] Bootstrap complete"
