@@ -78,6 +78,10 @@ Parameters:
     Type: String
     Default: "/home/ec2-user/app"
     Description: Path to the repo in the AMI
+  BackupBucketName:
+    Type: String
+    Default: n8n-backup
+    Description: S3 bucket name to store nightly Postgres backups
 
 Resources:
   N8nEC2Instance:
@@ -135,6 +139,66 @@ Resources:
             # Execute bootstrap script
             sudo -u "${UserName}" bash "${RepoPath}/aws/bootstrap.sh"
 
+  N8nDbBackupDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Command
+      Content:
+        schemaVersion: '2.2'
+        description: "Nightly backup of n8n Postgres DB"
+        mainSteps:
+          - action: aws:runShellScript
+            name: backup
+            inputs:
+              runCommand:
+                - "#!/bin/bash"
+                - "set -euxo pipefail"
+                - "TIMESTAMP=$(date +%F)"
+                - "/usr/bin/docker exec postgres \\"
+                - "  pg_dump -U ${POSTGRES_NON_ROOT_USER} \\"
+                - "  -d ${POSTGRES_DB} -Fc > /tmp/$TIMESTAMP.dump"
+                - "aws s3 cp /tmp/$TIMESTAMP.dump \\"
+                - "  s3://${BackupBucketName}/${ClientName}/$TIMESTAMP.dump"
+                - "rm /tmp/$TIMESTAMP.dump"
+
+  N8nBackupEventsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSSMAndS3Backup
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                Resource:
+                  - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${N8nEC2Instance}
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/${N8nDbBackupDocument}
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:aws:s3:::${BackupBucketName}/*
+  
+  N8nBackupSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: n8n-nightly-db-backup
+      ScheduleExpression: 'cron(0 1 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Arn: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/${N8nDbBackupDocument}
+          Id: N8nBackupTarget
+          RoleArn: !GetAtt N8nBackupEventsRole.Arn
+            
 Outputs:
   InstanceId:
     Description: The ID of the EC2 instance
