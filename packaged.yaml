@@ -62,7 +62,7 @@ Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/f61b2fb8a0ca2dbdb3ee58382f0ac848.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/3f842226ba1832ae317e575d1a5a90d1.template
       Parameters:
         VpcCidr:
           Ref: VpcCidr
@@ -78,7 +78,7 @@ Resources:
   SecurityStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/fee9afac63ea227cff170355e7c04811.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/652884d43099c79f092f1f641ca37124.template
       Parameters:
         VpcId:
           Fn::GetAtt:

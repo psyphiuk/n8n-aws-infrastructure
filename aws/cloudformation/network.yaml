@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'VPC, subnets, IGW, NAT, and route tables for n8n'
+Description: 'VPC, subnets, and route tables for n8n'
 
 Parameters:
   VpcCidr:
