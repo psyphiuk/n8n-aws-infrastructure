@@ -85,8 +85,9 @@ Resources:
       UserData:
         Fn::Base64:
           Fn::Join:
-            - ""   # join on empty string
-            - - "#!/usr/bin/env bash -x\n"
+            - ""
+            - - "#!/usr/bin/env bash\n"
+              - "echo '>>> USERDATA STARTED' > /tmp/udata-marker.log\n"
               - "exec > >(tee -a /var/log/bootstrap.log) 2>&1\n"
               - "set -euxo pipefail\n"
               - "\n"
@@ -94,7 +95,7 @@ Resources:
               - "USER_NAME=$(getent passwd 1000 | cut -d: -f1)\n"
               - "USER_HOME=$(getent passwd \"${USER_NAME}\" | cut -d: -f6)\n"
               - "\n"
-              - "# Export CloudFormation parameters into environment\n"
+              - "# Export application parameters\n"
               - "export CLIENT_NAME=\"${ClientName}\"\n"
               - "export POSTGRES_DB=\"${PostgresDb}\"\n"
               - "export POSTGRES_NON_ROOT_USER=\"${PostgresUser}\"\n"
