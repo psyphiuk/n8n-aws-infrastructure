@@ -72,6 +72,11 @@ Parameters:
     Description: S3 bucket name to store nightly Postgres backups
 
 Resources:
+  N8nElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
   N8nEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -133,6 +138,12 @@ Resources:
               RepoURL: !Ref RepoURL
               RepoBranch: !Ref RepoBranch
               DockerDir: !Ref DockerDir
+
+  N8nEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt N8nElasticIP.AllocationId
+      InstanceId: !Ref N8nEC2Instance
 
   N8nDbBackupDocument:
     Type: AWS::SSM::Document
@@ -205,4 +216,4 @@ Outputs:
     Value: !Ref N8nEC2Instance
   PublicIp:
     Description: Public IP of the EC2 instance
-    Value: !GetAtt N8nEC2Instance.PublicIp
+    Value: !Ref N8nElasticIP
