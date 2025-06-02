@@ -23,6 +23,15 @@ Resources:
           ToPort: 5678
           CidrIp: !Ref SSHCidr
         - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref SSHCidr
+        # HTTPS (443) for n8n UI
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref SSHCidr
+        - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref SSHCidr

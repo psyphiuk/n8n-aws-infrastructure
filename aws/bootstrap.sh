@@ -68,12 +68,61 @@ else
   exit 1
 fi
 
-# 7. Test health endpoint
-if curl -sS http://localhost:5678/healthz; then
-  echo "n8n health check passed"
-else
-  echo "n8n health check failed" >&2
-  exit 1
+# 7. Install Nginx & Certbot for HTTPS termination ###
+echo "Installing Nginx & Certbot..."
+if ! command -v nginx &>/dev/null; then
+  apt-get update
+  apt-get install -y nginx certbot python3-certbot-nginx
 fi
+
+# Create minimal Nginx site config for n8n
+cat > /etc/nginx/sites-available/n8n <<'EOF'
+server {
+  listen 80;
+  server_name n8n.tybi.ai;
+
+  # Redirect all HTTP to HTTPS
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+
+server {
+  listen 443 ssl;
+  server_name n8n.tybi.ai;
+
+  ssl_certificate     /etc/letsencrypt/live/n8n.tybi.ai/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/n8n.tybi.ai/privkey.pem;
+
+  # Proxy everything to n8n on localhost:5678
+  location / {
+    proxy_pass http://127.0.0.1:5678;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_buffering off;          # recommended for WebSocket/real-time
+  }
+}
+EOF
+
+# Enable site, remove default
+ln -sf /etc/nginx/sites-available/n8n /etc/nginx/sites-enabled/n8n
+rm -f /etc/nginx/sites-enabled/default
+
+# Test & reload Nginx
+nginx -t && systemctl reload nginx
+
+# Obtain/renew Let’s Encrypt certificate (non-interactive)
+# Uses webroot auth via Nginx’s port 80 listener
+certbot --nginx \
+  --agree-tos \
+  --non-interactive \
+  --redirect \
+  --staple-ocsp \
+  -m simon@tybi.ai \
+  -d n8n.tybi.ai
+
+# Reload Nginx so the new cert is active
+systemctl reload nginx
+
 
 echo "Bootstrap complete"
