@@ -88,24 +88,26 @@ fi
 
 # (a) Create a port 80‐only Nginx site so Certbot’s HTTP challenge can succeed
 cat > /etc/nginx/sites-available/n8n-http << 'EOF'
+map $http_upgrade $connection_upgrade {
+  default       upgrade;
+  ''            close;
+}
+
 server {
-  listen 80;
+  listen 443 ssl http2;
   server_name n8n.tybi.ai;
 
-  # Proxy all requests to n8n on localhost:5678
-  location / {
-    proxy_pass http://127.0.0.1:5678;
-    proxy_set_header Host                $host;
-    proxy_set_header X-Real-IP           $remote_addr;
-    proxy_set_header X-Forwarded-For     $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto   $scheme;
-    proxy_buffering off;    # Crucial for WebSocket
-  }
+  ssl_certificate     /etc/letsencrypt/live/n8n.tybi.ai/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/n8n.tybi.ai/privkey.pem;
 
-  # Let’s Encrypt ACME challenge location
-  location ^~ /.well-known/acme-challenge/ {
-    root /var/www/html;
-    allow all;
+  location / {
+    proxy_pass         http://127.0.0.1:5678;
+    proxy_http_version 1.1;
+    proxy_set_header   Upgrade    $http_upgrade;
+    proxy_set_header   Connection $connection_upgrade;
+    proxy_set_header   Host       $host;
+    proxy_set_header   X-Real-IP  $remote_addr;
+    proxy_buffering    off;
   }
 }
 EOF

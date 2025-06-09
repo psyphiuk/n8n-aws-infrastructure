@@ -78,7 +78,7 @@ Resources:
   SecurityStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/ce69a867404437953275b97cda78f805.template
+      TemplateURL: https://s3.eu-west-2.amazonaws.com/my-cfn-artifacts-tybi-ai/9eb5db310024a035d179ef4d70f62118.template
       Parameters:
         VpcId:
           Fn::GetAtt:
