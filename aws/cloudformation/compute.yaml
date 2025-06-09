@@ -70,6 +70,9 @@ Parameters:
     Type: String
     Default: n8n-backup
     Description: S3 bucket name to store nightly Postgres backups
+  BootstrapVersion:
+    Type: String
+    Description: Version of the bootstrap scripts
 
 Resources:
   N8nElasticIP:
