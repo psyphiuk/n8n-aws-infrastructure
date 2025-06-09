@@ -97,6 +97,7 @@ Resources:
               #!/usr/bin/env bash
               echo '>>> USERDATA STARTED v1.0' > /tmp/udata-marker.log
               exec > >(tee -a /var/log/bootstrap.log) 2>&1
+              echo "Bootstrapped at version ${BootstrapVersion}" >> /var/log/bootstrap.log
               set -euxo pipefail
 
               # Detect non-root user
