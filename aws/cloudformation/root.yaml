@@ -65,6 +65,10 @@ Parameters:
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
     Description: EC2 KeyPair for SSH access
+  BootstrapVersion:
+    Type: String
+    Default: "1"
+    Description: Version of the bootstrap scripts
 
 Resources:
   NetworkStack:
@@ -124,6 +128,7 @@ Resources:
         BasicAuthPassword:       !Ref BasicAuthPassword
         Timezone:                !Ref Timezone
         DockerDir:               !Ref DockerDir
+        BootstrapVersion:        !Ref BootstrapVersion
 
 Outputs: {}
   # You can aggregate or reference child‐stack outputs here

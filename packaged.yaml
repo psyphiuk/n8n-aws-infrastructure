@@ -58,6 +58,10 @@ Parameters:
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
     Description: EC2 KeyPair for SSH access
+  BootstrapVersion:
+    Type: String
+    Default: '1'
+    Description: Version of the bootstrap scripts
 Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
@@ -129,4 +133,6 @@ Resources:
           Ref: Timezone
         DockerDir:
           Ref: DockerDir
+        BootstrapVersion:
+          Ref: BootstrapVersion
 Outputs: {}

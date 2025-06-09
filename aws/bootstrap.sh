@@ -94,11 +94,15 @@ map $http_upgrade $connection_upgrade {
 }
 
 server {
-  listen 443 ssl http2;
+  listen 80 default_server;
+  listen [::]:80 default_server;
   server_name n8n.tybi.ai;
 
-  ssl_certificate     /etc/letsencrypt/live/n8n.tybi.ai/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/n8n.tybi.ai/privkey.pem;
+  location ^~ /.well-known/acme-challenge/ {
+    root /var/www/html;
+    default_type "text/plain";
+    allow all;
+  }
 
   location / {
     proxy_pass         http://127.0.0.1:5678;
@@ -107,6 +111,8 @@ server {
     proxy_set_header   Connection $connection_upgrade;
     proxy_set_header   Host       $host;
     proxy_set_header   X-Real-IP  $remote_addr;
+    proxy_set_header   X-Forwarded-For    $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto  $scheme;
     proxy_buffering    off;
   }
 }
