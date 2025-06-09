@@ -49,7 +49,14 @@ fi
 
 export POSTGRES_NON_ROOT_PASSWORD="$(aws ssm get-parameter --name "$SSM_POSTGRES_PASSWORD_PATH" --with-decryption --query Parameter.Value --output text)"
 export ENCRYPTION_KEY="$(aws ssm get-parameter --name "$SSM_ENCRYPTION_KEY_PATH" --with-decryption --query Parameter.Value --output text)"
-# (Other CFN-exported vars like CLIENT_NAME, POSTGRES_DB, etc. are already in the environment via UserData)
+
+# 3b) Export CFN params into the same shell
+export POSTGRES_DB="${POSTGRES_DB}"
+export POSTGRES_NON_ROOT_USER="${POSTGRES_NON_ROOT_USER}"
+export N8N_BASIC_AUTH_ACTIVE="${N8N_BASIC_AUTH_ACTIVE}"
+export N8N_BASIC_AUTH_USER="${N8N_BASIC_AUTH_USER}"
+export N8N_BASIC_AUTH_PASSWORD="${N8N_BASIC_AUTH_PASSWORD}"
+export GENERIC_TIMEZONE="${GENERIC_TIMEZONE}"
 
 # ---------------------------------------------------
 # 4) (Your existing steps) Clone/update repo & run Compose
